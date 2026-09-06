@@ -133,7 +133,7 @@ function ParcelsContent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Interactive GIS Map (2 columns on lg) */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="h-[520px] w-full bg-white rounded-lg overflow-hidden border border-slate-200 shadow-sm">
+          <div className="w-full">
             <CadastralMap
               parcels={parcels}
               selectedParcelId={selectedParcel?.id || null}
