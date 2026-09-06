@@ -1,0 +1,166 @@
+// Prisma schema for Real-Time National Land Acquisition & Management System
+// Ministry of Rural Development, Government of India (RFCTLARR Act 2013)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String     @id @default(uuid())
+  email          String     @unique
+  passwordHash   String
+  name           String
+  designation    String
+  role           String     // UserRole enum string
+  state          String?
+  district       String?
+  department     String?
+  phone          String?
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  auditLogs      AuditLog[]
+}
+
+model Project {
+  id                   String            @id @default(uuid())
+  code                 String            @unique
+  name                 String
+  description          String
+  sector               String            // Sector enum
+  requisitioningAgency String
+  state                String
+  district             String
+  totalAreaHectares    Float
+  estimatedBudgetCr    Float
+  compensationBudgetCr Float
+  currentStage         String            @default("STAGE_1_REQUISITION") // ProjectStage enum
+  status               String            @default("SUBMITTED")           // ProjectStatus enum
+  riskScore            Float             @default(15.0)
+  riskLevel            String            @default("LOW")                 // RiskLevel enum
+  statutoryLapseDeadline DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  notifications        Notification[]
+  parcels              LandParcel[]
+  displacedFamilies    DisplacedFamily[]
+}
+
+model Notification {
+  id                 String    @id @default(uuid())
+  projectId          String
+  project            Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  section            String    // NotificationSection: SECTION_4_SIA, SECTION_11_PRELIMINARY, SECTION_19_DECLARATION
+  gazetteNumber      String
+  issueDate          DateTime
+  expiryDate         DateTime?
+  newspaperLocal1    String?
+  newspaperLocal2    String?
+  documentUrl        String?
+  status             String    @default("PUBLISHED") // NotificationStatus
+  objectionsCount    Int       @default(0)
+  objectionsResolved Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model LandParcel {
+  id                  String           @id @default(uuid())
+  projectId           String
+  project             Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  village             String
+  tehsil              String
+  khasraNumber        String
+  areaAcres           Float
+  landType            String           // LandType enum
+  ownerName           String
+  ownerAadhaarMasked  String?
+  ownerBankAccMasked  String?
+  ownerIfsc           String?
+  status              String           @default("NOTIFIED") // ParcelStatus
+  latitude            Float
+  longitude           Float
+  geometryGeoJSON     String?          // Serialized GeoJSON polygon string
+  treesCount          Int              @default(0)
+  structuresCount     Int              @default(0)
+  fieldNotes          String?
+  lastSurveyedAt      DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  valuationAward      ValuationAward?
+}
+
+model ValuationAward {
+  id                       String         @id @default(uuid())
+  parcelId                 String         @unique
+  parcel                   LandParcel     @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  baseRatePerAcre          Float
+  marketValueLand          Float
+  ruralMultiplier          Float          @default(1.5)
+  multipliedMarketValue    Float
+  assetsValue              Float          @default(0)
+  subTotalBeforeSolatium   Float
+  solatiumAmount           Float          // 100% of (multipliedMarketValue + assetsValue)
+  daysBetweenSec11AndAward Int            @default(0)
+  additionalInterestAmount Float          @default(0) // 12% p.a.
+  totalAwardAmount         Float
+  awardDate                DateTime       @default(now())
+  status                   String         @default("APPROVED_COLLECTOR") // AwardStatus
+  approvedBy               String?
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+
+  disbursements            Disbursement[]
+}
+
+model Disbursement {
+  id              String         @id @default(uuid())
+  awardId         String
+  award           ValuationAward @relation(fields: [awardId], references: [id], onDelete: Cascade)
+  beneficiaryName String
+  amountPaid      Float
+  paymentMode     String         @default("PFMS_DBT")
+  utrReference    String         @unique
+  paymentDate     DateTime       @default(now())
+  status          String         @default("SUCCESS") // DisbursementStatus
+  remarks         String?
+  createdAt       DateTime       @default(now())
+}
+
+model DisplacedFamily {
+  id                       String   @id @default(uuid())
+  projectId                String
+  project                  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  familyHeadName           String
+  category                 String   // SocialCategory enum (SC, ST, OBC, GENERAL, BPL)
+  membersCount             Int
+  isLosingHomestead        Boolean  @default(false)
+  isLosingLivelihood       Boolean  @default(false)
+  housingEntitlementStatus String   @default("PENDING") // HousingEntitlementStatus
+  subsistenceGrantPaid     Boolean  @default(false)     // INR 36,000 (3000 x 12 mos)
+  resettlementAllowancePaid Boolean @default(false)     // INR 50,000
+  overallRRStatus          String   @default("SURVEYED") // OverallRRStatus
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userRole      String
+  action        String
+  entityType    String
+  entityId      String
+  ipAddress     String   @default("127.0.0.1")
+  previousState String?  // JSON string
+  newState      String?  // JSON string
+  createdAt     DateTime @default(now())
+}

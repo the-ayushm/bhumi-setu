@@ -1,0 +1,31 @@
+{
+  "name": "national-land-acquisition-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-Time National Land Acquisition & Management System (Ministry of Rural Development, SIH 26016)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "dev:api": "npm run dev --workspace=@sih/api",
+    "dev:web": "npm run dev --workspace=@sih/web",
+    "build": "npm run build --workspaces",
+    "build:web": "npm run build --workspace=@sih/shared && npm run build --workspace=@sih/web",
+    "vercel-build": "npm run build --workspace=@sih/shared && npm run build --workspace=@sih/web",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces"
+  },
+  "keywords": [
+    "sih-2024",
+    "mord",
+    "land-acquisition",
+    "rfctlarr-2013",
+    "gis",
+    "pfms"
+  ],
+  "author": "SIH Team - Lead Architecture",
+  "license": "UNLICENSED"
+}
