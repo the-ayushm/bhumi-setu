@@ -8,7 +8,8 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces",
+    "dev": "npm run dev:web",
+    "dev:all": "npm run dev --workspaces",
     "dev:api": "npm run dev --workspace=@sih/api",
     "dev:web": "npm run dev --workspace=@sih/web",
     "build": "npm run build --workspaces",
