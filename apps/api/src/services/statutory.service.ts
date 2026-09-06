@@ -37,7 +37,7 @@ export class StatutoryService {
     // Stage 3 requires Section 4 SIA published
     if (targetStage === ProjectStage.STAGE_3_PRELIMINARY_NOTIFICATION) {
       const hasSia = project.notifications.some(
-        (n) => n.section === 'SECTION_4_SIA' && n.status === 'PUBLISHED'
+        (n: any) => n.section === 'SECTION_4_SIA' && n.status === 'PUBLISHED'
       );
       if (!hasSia) {
         errors.push(
@@ -49,7 +49,7 @@ export class StatutoryService {
     // Stage 5 Declaration requires Section 11 Preliminary Notification published
     if (targetStage === ProjectStage.STAGE_5_DECLARATION) {
       const hasSec11 = project.notifications.some(
-        (n) => n.section === 'SECTION_11_PRELIMINARY' && n.status === 'PUBLISHED'
+        (n: any) => n.section === 'SECTION_11_PRELIMINARY' && n.status === 'PUBLISHED'
       );
       if (!hasSec11) {
         errors.push(
@@ -61,7 +61,7 @@ export class StatutoryService {
     // Stage 6 Claims & Award requires Section 19 Declaration
     if (targetStage === ProjectStage.STAGE_6_CLAIMS_AWARD) {
       const hasSec19 = project.notifications.some(
-        (n) => n.section === 'SECTION_19_DECLARATION' && n.status === 'PUBLISHED'
+        (n: any) => n.section === 'SECTION_19_DECLARATION' && n.status === 'PUBLISHED'
       );
       if (!hasSec19) {
         errors.push(
@@ -77,7 +77,7 @@ export class StatutoryService {
         errors.push('No land parcels registered for this project.');
       } else {
         const undisbursed = project.parcels.filter(
-          (p) => !p.valuationAward || p.valuationAward.disbursements.length === 0
+          (p: any) => !p.valuationAward || p.valuationAward.disbursements.length === 0
         );
         if (undisbursed.length > 0) {
           errors.push(

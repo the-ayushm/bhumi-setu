@@ -60,7 +60,7 @@ export class RiskService {
 
     // 2. Litigation / Court Stays
     const litigationParcels = project.parcels.filter(
-      (p) => p.status === 'LITIGATION_STAY'
+      (p: any) => p.status === 'LITIGATION_STAY'
     );
     const litigationParcelCount = litigationParcels.length;
     if (litigationParcelCount > 0) {
@@ -82,9 +82,9 @@ export class RiskService {
     }
 
     // 4. Disbursement Lag Ratio
-    const parcelsWithAward = project.parcels.filter((p) => p.valuationAward);
+    const parcelsWithAward = project.parcels.filter((p: any) => p.valuationAward);
     const disbursedParcels = project.parcels.filter(
-      (p) => p.valuationAward && p.valuationAward.disbursements.length > 0
+      (p: any) => p.valuationAward && p.valuationAward.disbursements.length > 0
     );
     const totalAwardsCount = parcelsWithAward.length;
     const disbursedAwardsCount = disbursedParcels.length;
