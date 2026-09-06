@@ -507,17 +507,21 @@ function AwardsContent() {
   );
 }
 
+import { RoleGuard } from '@/components/auth/RoleGuard';
+
 export default function AwardsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="text-center py-16 text-xs text-slate-500">
-          Loading Statutory Valuation & Award Engine...
-        </div>
-      }
-    >
-      <AwardsContent />
-    </Suspense>
+    <RoleGuard routePath="/awards">
+      <Suspense
+        fallback={
+          <div className="text-center py-16 text-xs text-slate-500">
+            Loading Statutory Valuation & Award Engine...
+          </div>
+        }
+      >
+        <AwardsContent />
+      </Suspense>
+    </RoleGuard>
   );
 }
 

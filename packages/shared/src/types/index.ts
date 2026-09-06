@@ -177,3 +177,191 @@ export interface RiskIndicatorDetail {
   litigationParcelCount: number;
   summary: string;
 }
+
+export interface RolePermissions {
+  label: string;
+  allowedRoutes: string[];
+  canCreateProject: boolean;
+  canTransitionStage: boolean;
+  canPublishGazette: boolean;
+  canFormulateAward: boolean;
+  canApproveAward: boolean;
+  canTriggerDisbursement: boolean;
+  canConductSurvey: boolean;
+  canViewInternalRisk: boolean;
+  canViewAuditLogs: boolean;
+  canViewSensitivePII: boolean;
+  jurisdictionScope: 'NATIONAL' | 'STATE' | 'DISTRICT' | 'AGENCY' | 'FIELD' | 'PUBLIC';
+}
+
+export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
+  [UserRole.NATIONAL_ADMIN]: {
+    label: 'National Admin (MoRD)',
+    allowedRoutes: [
+      '/dashboard',
+      '/projects',
+      '/parcels',
+      '/notifications',
+      '/awards',
+      '/rr-monitoring',
+      '/disbursements',
+      '/risk-engine',
+      '/mis-reports',
+      '/field-survey',
+    ],
+    canCreateProject: true,
+    canTransitionStage: true,
+    canPublishGazette: true,
+    canFormulateAward: true,
+    canApproveAward: true,
+    canTriggerDisbursement: true,
+    canConductSurvey: true,
+    canViewInternalRisk: true,
+    canViewAuditLogs: true,
+    canViewSensitivePII: true,
+    jurisdictionScope: 'NATIONAL',
+  },
+  [UserRole.STATE_NODAL_OFFICER]: {
+    label: 'State Nodal Officer',
+    allowedRoutes: [
+      '/dashboard',
+      '/projects',
+      '/parcels',
+      '/notifications',
+      '/awards',
+      '/rr-monitoring',
+      '/disbursements',
+      '/risk-engine',
+      '/mis-reports',
+    ],
+    canCreateProject: false,
+    canTransitionStage: true,
+    canPublishGazette: true,
+    canFormulateAward: false,
+    canApproveAward: false,
+    canTriggerDisbursement: false,
+    canConductSurvey: false,
+    canViewInternalRisk: true,
+    canViewAuditLogs: true,
+    canViewSensitivePII: true,
+    jurisdictionScope: 'STATE',
+  },
+  [UserRole.DISTRICT_COLLECTOR]: {
+    label: 'District Collector',
+    allowedRoutes: [
+      '/dashboard',
+      '/projects',
+      '/parcels',
+      '/notifications',
+      '/awards',
+      '/rr-monitoring',
+      '/disbursements',
+      '/risk-engine',
+    ],
+    canCreateProject: false,
+    canTransitionStage: true,
+    canPublishGazette: true,
+    canFormulateAward: true,
+    canApproveAward: true,
+    canTriggerDisbursement: true,
+    canConductSurvey: true,
+    canViewInternalRisk: true,
+    canViewAuditLogs: true,
+    canViewSensitivePII: true,
+    jurisdictionScope: 'DISTRICT',
+  },
+  [UserRole.LAND_ACQUISITION_OFFICER]: {
+    label: 'Competent Authority (CALA)',
+    allowedRoutes: [
+      '/dashboard',
+      '/projects',
+      '/parcels',
+      '/notifications',
+      '/awards',
+      '/rr-monitoring',
+      '/disbursements',
+    ],
+    canCreateProject: false,
+    canTransitionStage: false,
+    canPublishGazette: false,
+    canFormulateAward: true,
+    canApproveAward: true,
+    canTriggerDisbursement: true,
+    canConductSurvey: true,
+    canViewInternalRisk: false,
+    canViewAuditLogs: false,
+    canViewSensitivePII: true,
+    jurisdictionScope: 'DISTRICT',
+  },
+  [UserRole.REQUISITIONING_AGENCY]: {
+    label: 'Requisitioning Agency (NHAI)',
+    allowedRoutes: [
+      '/dashboard',
+      '/projects',
+      '/parcels',
+      '/notifications',
+      '/awards',
+      '/disbursements',
+      '/risk-engine',
+    ],
+    canCreateProject: true,
+    canTransitionStage: false,
+    canPublishGazette: false,
+    canFormulateAward: false,
+    canApproveAward: false,
+    canTriggerDisbursement: false,
+    canConductSurvey: false,
+    canViewInternalRisk: true,
+    canViewAuditLogs: false,
+    canViewSensitivePII: true,
+    jurisdictionScope: 'AGENCY',
+  },
+  [UserRole.FIELD_SURVEYOR]: {
+    label: 'Field Surveyor',
+    allowedRoutes: ['/dashboard', '/projects', '/parcels', '/field-survey'],
+    canCreateProject: false,
+    canTransitionStage: false,
+    canPublishGazette: false,
+    canFormulateAward: false,
+    canApproveAward: false,
+    canTriggerDisbursement: false,
+    canConductSurvey: true,
+    canViewInternalRisk: false,
+    canViewAuditLogs: false,
+    canViewSensitivePII: true,
+    jurisdictionScope: 'FIELD',
+  },
+  [UserRole.CITIZEN_VIEWER]: {
+    label: 'Citizen Viewer',
+    allowedRoutes: ['/dashboard', '/projects', '/parcels', '/notifications'],
+    canCreateProject: false,
+    canTransitionStage: false,
+    canPublishGazette: false,
+    canFormulateAward: false,
+    canApproveAward: false,
+    canTriggerDisbursement: false,
+    canConductSurvey: false,
+    canViewInternalRisk: false,
+    canViewAuditLogs: false,
+    canViewSensitivePII: false,
+    jurisdictionScope: 'PUBLIC',
+  },
+};
+
+export function hasPermission(
+  role: UserRole,
+  permission: keyof Omit<RolePermissions, 'label' | 'allowedRoutes' | 'jurisdictionScope'>
+): boolean {
+  const perm = ROLE_PERMISSIONS[role];
+  return perm ? Boolean(perm[permission]) : false;
+}
+
+export function isRouteAllowed(role: UserRole, routePath: string): boolean {
+  const perm = ROLE_PERMISSIONS[role];
+  if (!perm) return false;
+  // Exact match or base path match
+  return perm.allowedRoutes.some(
+    (allowed) => routePath === allowed || routePath.startsWith(`${allowed}/`) || routePath.startsWith(`${allowed}?`)
+  );
+}
+

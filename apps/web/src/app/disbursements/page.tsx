@@ -17,8 +17,17 @@ import {
   Zap,
 } from 'lucide-react';
 import { formatINR, UserRole } from '@sih/shared';
+import { RoleGuard } from '@/components/auth/RoleGuard';
 
 export default function DisbursementsPage() {
+  return (
+    <RoleGuard routePath="/disbursements">
+      <DisbursementsContent />
+    </RoleGuard>
+  );
+}
+
+function DisbursementsContent() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 

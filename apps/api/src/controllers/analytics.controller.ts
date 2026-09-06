@@ -1,14 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma.js';
 import { RiskService } from '../services/risk.service.js';
+import { buildJurisdictionScope } from '../middlewares/auth.js';
+import { UserRole } from '@sih/shared';
 
 export async function getNationalSummary(req: Request, res: Response, next: NextFunction) {
   try {
-    const totalProjects = await prisma.project.count();
-    const totalParcels = await prisma.landParcel.count();
-    const totalDisplacedFamilies = await prisma.displacedFamily.count();
+    const { projectWhere, parcelWhere } = buildJurisdictionScope(req);
+    const hasProjectFilter = Object.keys(projectWhere).length > 0;
+
+    const totalProjects = await prisma.project.count({ where: projectWhere });
+    const totalParcels = await prisma.landParcel.count({ where: parcelWhere });
+    const totalDisplacedFamilies = await prisma.displacedFamily.count({
+      where: hasProjectFilter ? { project: projectWhere } : {},
+    });
 
     const projects = await prisma.project.findMany({
+      where: projectWhere,
       select: {
         totalAreaHectares: true,
         estimatedBudgetCr: true,
@@ -18,7 +26,11 @@ export async function getNationalSummary(req: Request, res: Response, next: Next
       },
     });
 
+    const disbursementWhere = hasProjectFilter
+      ? { award: { parcel: { project: projectWhere } } }
+      : {};
     const disbursements = await prisma.disbursement.findMany({
+      where: disbursementWhere,
       select: { amountPaid: true },
     });
 
@@ -37,6 +49,7 @@ export async function getNationalSummary(req: Request, res: Response, next: Next
     // Breakdown by sector
     const sectorStats = await prisma.project.groupBy({
       by: ['sector'],
+      where: projectWhere,
       _count: { id: true },
       _sum: { totalAreaHectares: true, compensationBudgetCr: true },
     });
@@ -44,6 +57,7 @@ export async function getNationalSummary(req: Request, res: Response, next: Next
     // Breakdown by stage
     const stageStats = await prisma.project.groupBy({
       by: ['currentStage'],
+      where: projectWhere,
       _count: { id: true },
     });
 
@@ -97,6 +111,15 @@ export async function getStateRankings(req: Request, res: Response, next: NextFu
 
 export async function getRiskIndicators(req: Request, res: Response, next: NextFunction) {
   try {
+    // Citizen Viewer gets empty or public indicators only
+    if (req.user?.role === UserRole.CITIZEN_VIEWER) {
+      return res.json({
+        success: true,
+        count: 0,
+        data: [],
+      });
+    }
+
     const risks = await RiskService.getAllProjectRisks();
     return res.json({
       success: true,

@@ -41,7 +41,7 @@ import {
 } from '../controllers/analytics.controller.js';
 import { getMISReport } from '../controllers/report.controller.js';
 import { listAuditLogs } from '../controllers/audit.controller.js';
-import { authenticate, authorize } from '../middlewares/auth.js';
+import { authenticate, optionalAuthenticate, authorize } from '../middlewares/auth.js';
 import { recordAuditLog } from '../middlewares/audit.js';
 import { UserRole } from '@sih/shared';
 
@@ -61,9 +61,9 @@ router.get('/health', (req, res) => {
 router.post('/auth/login', login);
 router.get('/auth/me', authenticate, getMe);
 
-// Project Routes
-router.get('/projects', listProjects);
-router.get('/projects/:id', getProjectById);
+// Project Routes (Public / Citizen can view; scoped automatically if logged in)
+router.get('/projects', optionalAuthenticate, listProjects);
+router.get('/projects/:id', optionalAuthenticate, getProjectById);
 router.post(
   '/projects',
   authenticate,
@@ -80,9 +80,9 @@ router.patch(
 );
 
 // Cadastral Parcel & GIS Routes
-router.get('/parcels/geojson', getParcelsGeoJSON);
-router.get('/parcels', listParcels);
-router.get('/parcels/:id', getParcelById);
+router.get('/parcels/geojson', optionalAuthenticate, getParcelsGeoJSON);
+router.get('/parcels', optionalAuthenticate, listParcels);
+router.get('/parcels/:id', optionalAuthenticate, getParcelById);
 router.post(
   '/parcels',
   authenticate,
@@ -99,7 +99,7 @@ router.patch(
 );
 
 // Gazette Notification Routes (Sec 4, 11, 19)
-router.get('/notifications', listNotifications);
+router.get('/notifications', optionalAuthenticate, listNotifications);
 router.post(
   '/notifications',
   authenticate,
@@ -115,7 +115,12 @@ router.post(
 );
 
 // Valuation & Award Routes (Sec 26-30)
-router.post('/awards/calculate', calculateAwardPreview);
+router.post(
+  '/awards/calculate',
+  authenticate,
+  authorize(UserRole.NATIONAL_ADMIN, UserRole.DISTRICT_COLLECTOR, UserRole.LAND_ACQUISITION_OFFICER),
+  calculateAwardPreview
+);
 router.post(
   '/awards',
   authenticate,
@@ -123,11 +128,34 @@ router.post(
   recordAuditLog('VALUATION_AWARD_CREATED', 'AWARD'),
   createAward
 );
-router.get('/awards/project/:projectId', listAwardsByProject);
+router.get('/awards/project/:projectId', optionalAuthenticate, listAwardsByProject);
 
 // Compensation Disbursement Routes (PFMS DBT)
-router.get('/disbursements', listDisbursements);
-router.get('/disbursements/stats', getDisbursementStats);
+// Citizen and Field Surveyor are strictly blocked from internal disbursement tables
+router.get(
+  '/disbursements',
+  authenticate,
+  authorize(
+    UserRole.NATIONAL_ADMIN,
+    UserRole.STATE_NODAL_OFFICER,
+    UserRole.DISTRICT_COLLECTOR,
+    UserRole.LAND_ACQUISITION_OFFICER,
+    UserRole.REQUISITIONING_AGENCY
+  ),
+  listDisbursements
+);
+router.get(
+  '/disbursements/stats',
+  authenticate,
+  authorize(
+    UserRole.NATIONAL_ADMIN,
+    UserRole.STATE_NODAL_OFFICER,
+    UserRole.DISTRICT_COLLECTOR,
+    UserRole.LAND_ACQUISITION_OFFICER,
+    UserRole.REQUISITIONING_AGENCY
+  ),
+  getDisbursementStats
+);
 router.post(
   '/disbursements/trigger',
   authenticate,
@@ -137,8 +165,18 @@ router.post(
 );
 
 // R&R Routes (Sec 16, 31)
-router.get('/rr/families', listFamilies);
-router.get('/rr/summary/:projectId', getRRSummaryByProject);
+router.get(
+  '/rr/families',
+  authenticate,
+  authorize(
+    UserRole.NATIONAL_ADMIN,
+    UserRole.STATE_NODAL_OFFICER,
+    UserRole.DISTRICT_COLLECTOR,
+    UserRole.LAND_ACQUISITION_OFFICER
+  ),
+  listFamilies
+);
+router.get('/rr/summary/:projectId', optionalAuthenticate, getRRSummaryByProject);
 router.post(
   '/rr/families',
   authenticate,
@@ -155,12 +193,33 @@ router.patch(
 );
 
 // Analytics & Risk Routes
-router.get('/analytics/national-summary', getNationalSummary);
-router.get('/analytics/state-rankings', getStateRankings);
-router.get('/analytics/risk-indicators', getRiskIndicators);
+router.get('/analytics/national-summary', optionalAuthenticate, getNationalSummary);
+router.get('/analytics/state-rankings', optionalAuthenticate, getStateRankings);
+router.get('/analytics/risk-indicators', optionalAuthenticate, getRiskIndicators);
 
 // MIS Reports & Audit Logs
-router.get('/reports/mis', getMISReport);
-router.get('/audit-logs', listAuditLogs);
+router.get(
+  '/reports/mis',
+  authenticate,
+  authorize(
+    UserRole.NATIONAL_ADMIN,
+    UserRole.STATE_NODAL_OFFICER,
+    UserRole.DISTRICT_COLLECTOR,
+    UserRole.LAND_ACQUISITION_OFFICER,
+    UserRole.REQUISITIONING_AGENCY
+  ),
+  getMISReport
+);
+router.get(
+  '/audit-logs',
+  authenticate,
+  authorize(
+    UserRole.NATIONAL_ADMIN,
+    UserRole.STATE_NODAL_OFFICER,
+    UserRole.DISTRICT_COLLECTOR,
+    UserRole.LAND_ACQUISITION_OFFICER
+  ),
+  listAuditLogs
+);
 
 export default router;

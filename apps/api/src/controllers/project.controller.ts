@@ -7,22 +7,31 @@ import {
 } from '@sih/shared';
 import { StatutoryService } from '../services/statutory.service.js';
 import { RiskService } from '../services/risk.service.js';
+import { buildJurisdictionScope } from '../middlewares/auth.js';
+import { UserRole } from '@sih/shared';
 
 export async function listProjects(req: Request, res: Response, next: NextFunction) {
   try {
     const { state, sector, stage, search, riskLevel } = req.query;
 
-    const where: any = {};
+    const { projectWhere } = buildJurisdictionScope(req);
+    const where: any = { ...projectWhere };
+
     if (state && typeof state === 'string') where.state = state;
     if (sector && typeof sector === 'string') where.sector = sector;
     if (stage && typeof stage === 'string') where.currentStage = stage;
     if (riskLevel && typeof riskLevel === 'string') where.riskLevel = riskLevel;
     if (search && typeof search === 'string') {
-      where.OR = [
-        { name: { contains: search } },
-        { code: { contains: search } },
-        { district: { contains: search } },
-        { requisitioningAgency: { contains: search } },
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { name: { contains: search } },
+            { code: { contains: search } },
+            { district: { contains: search } },
+            { requisitioningAgency: { contains: search } },
+          ],
+        },
       ];
     }
 
@@ -71,6 +80,23 @@ export async function getProjectById(req: Request, res: Response, next: NextFunc
 
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+
+    // Role-based horizontal scoping verification
+    if (req.user) {
+      if (req.user.role === UserRole.STATE_NODAL_OFFICER && req.user.state && project.state !== req.user.state) {
+        return res.status(403).json({ success: false, message: `Access forbidden: Project is outside your state jurisdiction (${req.user.state})` });
+      }
+      if (
+        (req.user.role === UserRole.DISTRICT_COLLECTOR || req.user.role === UserRole.LAND_ACQUISITION_OFFICER) &&
+        req.user.district &&
+        project.district !== req.user.district
+      ) {
+        return res.status(403).json({ success: false, message: `Access forbidden: Project is outside your district jurisdiction (${req.user.district})` });
+      }
+      if (req.user.role === UserRole.REQUISITIONING_AGENCY && !project.requisitioningAgency.includes('NHAI')) {
+        return res.status(403).json({ success: false, message: 'Access forbidden: Project belongs to another requisitioning agency' });
+      }
     }
 
     // Refresh dynamic risk indicators

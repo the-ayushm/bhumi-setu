@@ -17,8 +17,17 @@ import {
   Truck,
 } from 'lucide-react';
 import { UserRole, HousingEntitlementStatus, OverallRRStatus } from '@sih/shared';
+import { RoleGuard } from '@/components/auth/RoleGuard';
 
 export default function RRMonitoringPage() {
+  return (
+    <RoleGuard routePath="/rr-monitoring">
+      <RRMonitoringContent />
+    </RoleGuard>
+  );
+}
+
+function RRMonitoringContent() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedProjectId, setSelectedProjectId] = useState('');

@@ -109,7 +109,20 @@ async function main() {
     },
   });
 
-  console.log('Official users seeded successfully.');
+  const citizenPass = bcrypt.hashSync('Citizen@123', 10);
+  const citizen = await prisma.user.create({
+    data: {
+      email: 'citizen@gov.in',
+      passwordHash: citizenPass,
+      name: 'Shri Rajesh Kumar',
+      designation: 'Public Citizen / Landowner',
+      role: 'CITIZEN_VIEWER',
+      department: 'Public Transparency Portal',
+      phone: '+91-98765-43210',
+    },
+  });
+
+  console.log('Official users seeded successfully (7 Personas).');
 
   // 2. Project 1: Bharatmala Pariyojana NH-66 Pune Ring Road Alignment (High Priority / In Progress)
   const proj1 = await prisma.project.create({

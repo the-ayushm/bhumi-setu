@@ -1,18 +1,26 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma.js';
-import { DisbursementTriggerSchema } from '@sih/shared';
+import { DisbursementTriggerSchema, UserRole } from '@sih/shared';
 import { PFMSAdapter } from '../adapters/pfms.adapter.js';
+import { buildJurisdictionScope } from '../middlewares/auth.js';
 
 export async function listDisbursements(req: Request, res: Response, next: NextFunction) {
   try {
     const { projectId, status } = req.query;
 
+    const { projectWhere } = buildJurisdictionScope(req);
     const where: any = {};
     if (status && typeof status === 'string') where.status = status;
+
+    const parcelProjectFilter: any = { ...projectWhere };
     if (projectId && typeof projectId === 'string') {
+      parcelProjectFilter.id = projectId;
+    }
+
+    if (Object.keys(parcelProjectFilter).length > 0) {
       where.award = {
         parcel: {
-          projectId,
+          project: parcelProjectFilter,
         },
       };
     }
@@ -103,8 +111,18 @@ export async function triggerDisbursement(req: Request, res: Response, next: Nex
 
 export async function getDisbursementStats(req: Request, res: Response, next: NextFunction) {
   try {
-    const disbursements = await prisma.disbursement.findMany();
-    const awards = await prisma.valuationAward.findMany();
+    const { projectWhere } = buildJurisdictionScope(req);
+    const hasFilter = Object.keys(projectWhere).length > 0;
+
+    const disbursementWhere = hasFilter
+      ? { award: { parcel: { project: projectWhere } } }
+      : {};
+    const awardWhere = hasFilter
+      ? { parcel: { project: projectWhere } }
+      : {};
+
+    const disbursements = await prisma.disbursement.findMany({ where: disbursementWhere });
+    const awards = await prisma.valuationAward.findMany({ where: awardWhere });
 
     const totalDisbursedINR = disbursements.reduce((acc, curr) => acc + curr.amountPaid, 0);
     const totalAwardApprovedINR = awards.reduce((acc, curr) => acc + curr.totalAwardAmount, 0);

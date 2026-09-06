@@ -15,8 +15,17 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { formatINR } from '@sih/shared';
+import { RoleGuard } from '@/components/auth/RoleGuard';
 
 export default function MISReportsPage() {
+  return (
+    <RoleGuard routePath="/mis-reports">
+      <MISReportsContent />
+    </RoleGuard>
+  );
+}
+
+function MISReportsContent() {
   const [activeTab, setActiveTab] = useState<'mis' | 'audit'>('mis');
   const [misSearch, setMisSearch] = useState('');
   const [misSector, setMisSector] = useState('');

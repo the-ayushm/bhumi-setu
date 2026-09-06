@@ -16,8 +16,17 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { RiskLevel } from '@sih/shared';
+import { RoleGuard } from '@/components/auth/RoleGuard';
 
 export default function RiskEnginePage() {
+  return (
+    <RoleGuard routePath="/risk-engine">
+      <RiskEngineContent />
+    </RoleGuard>
+  );
+}
+
+function RiskEngineContent() {
   const { data: riskData, isLoading } = useQuery({
     queryKey: ['risk-indicators'],
     queryFn: () => fetchApi('/analytics/risk-indicators'),

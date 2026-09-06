@@ -23,7 +23,8 @@ import {
   Send,
   Zap,
 } from 'lucide-react';
-import { formatINR } from '@sih/shared';
+import { formatINR, UserRole, hasPermission } from '@sih/shared';
+import { useAuth } from '@/lib/auth-context';
 
 // Dynamically load Leaflet Map to avoid SSR errors
 const CadastralMap = dynamic(() => import('@/components/map/CadastralMap'), {
@@ -36,6 +37,7 @@ const CadastralMap = dynamic(() => import('@/components/map/CadastralMap'), {
 });
 
 function ParcelsContent() {
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const initialProjectId = searchParams.get('projectId') || '';
   const initialParcelId = searchParams.get('parcelId') || '';
@@ -292,41 +294,65 @@ function ParcelsContent() {
                   </div>
                 )}
 
-                {/* Direct Lifecycle Action Buttons */}
+                {/* Direct Lifecycle Action Buttons (Role Gated) */}
                 <div className="pt-2 border-t border-slate-200 space-y-2">
                   <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     Next Statutory Action:
                   </div>
 
+                  {user?.role === UserRole.CITIZEN_VIEWER && (
+                    <div className="bg-slate-50 border border-slate-200 text-slate-600 p-2.5 rounded text-xs">
+                      🔒 Administrative and field actions are restricted to verified revenue and survey officials. Public citizen mode provides transparent audit visibility only.
+                    </div>
+                  )}
+
                   {selectedParcel.status === 'NOTIFIED' && (
-                    <Link
-                      href={`/field-survey?parcelId=${selectedParcel.id}`}
-                      className="w-full bg-gov-navy hover:bg-gov-navy-light text-white text-xs font-semibold py-2 px-3 rounded shadow flex items-center justify-between transition-colors"
-                    >
-                      <span>Conduct Field Survey & Assets Count</span>
-                      <ArrowRight className="w-3.5 h-3.5 text-gov-saffron" />
-                    </Link>
+                    hasPermission(user?.role || UserRole.CITIZEN_VIEWER, 'canConductSurvey') ? (
+                      <Link
+                        href={`/field-survey?parcelId=${selectedParcel.id}`}
+                        className="w-full bg-gov-navy hover:bg-gov-navy-light text-white text-xs font-semibold py-2 px-3 rounded shadow flex items-center justify-between transition-colors"
+                      >
+                        <span>Conduct Field Survey & Assets Count</span>
+                        <ArrowRight className="w-3.5 h-3.5 text-gov-saffron" />
+                      </Link>
+                    ) : (
+                      user?.role !== UserRole.CITIZEN_VIEWER && (
+                        <div className="text-[11px] text-slate-400 italic">Field Survey action restricted to Field Surveyor / LAO.</div>
+                      )
+                    )
                   )}
 
                   {selectedParcel.status === 'SURVEYED' && (
-                    <Link
-                      href={`/awards?parcelId=${selectedParcel.id}`}
-                      className="w-full bg-gov-saffron hover:bg-gov-saffron-dark text-white text-xs font-semibold py-2 px-3 rounded shadow flex items-center justify-between transition-colors"
-                    >
-                      <span>Formulate Statutory Award (Sec 26-30)</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    hasPermission(user?.role || UserRole.CITIZEN_VIEWER, 'canFormulateAward') ? (
+                      <Link
+                        href={`/awards?parcelId=${selectedParcel.id}`}
+                        className="w-full bg-gov-saffron hover:bg-gov-saffron-dark text-white text-xs font-semibold py-2 px-3 rounded shadow flex items-center justify-between transition-colors"
+                      >
+                        <span>Formulate Statutory Award (Sec 26-30)</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    ) : (
+                      user?.role !== UserRole.CITIZEN_VIEWER && (
+                        <div className="text-[11px] text-slate-400 italic">Award formulation restricted to CALA / District Collector.</div>
+                      )
+                    )
                   )}
 
                   {(selectedParcel.status === 'VALUATION_DONE' ||
                     selectedParcel.status === 'AWARD_APPROVED') && (
-                    <Link
-                      href={`/disbursements?parcelId=${selectedParcel.id}`}
-                      className="w-full bg-gov-green hover:bg-gov-green-dark text-white text-xs font-semibold py-2 px-3 rounded shadow flex items-center justify-between transition-colors"
-                    >
-                      <span>Authorize PFMS Direct Benefit Transfer</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    hasPermission(user?.role || UserRole.CITIZEN_VIEWER, 'canTriggerDisbursement') ? (
+                      <Link
+                        href={`/disbursements?parcelId=${selectedParcel.id}`}
+                        className="w-full bg-gov-green hover:bg-gov-green-dark text-white text-xs font-semibold py-2 px-3 rounded shadow flex items-center justify-between transition-colors"
+                      >
+                        <span>Authorize PFMS Direct Benefit Transfer</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    ) : (
+                      user?.role !== UserRole.CITIZEN_VIEWER && (
+                        <div className="text-[11px] text-slate-400 italic">PFMS DBT authorization restricted to District Collector / CALA.</div>
+                      )
+                    )
                   )}
 
                   {selectedParcel.status === 'DISBURSED' && (

@@ -1,20 +1,28 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma.js';
-import { LandParcelCreateSchema, FieldSurveyUpdateSchema } from '@sih/shared';
+import { LandParcelCreateSchema, FieldSurveyUpdateSchema, UserRole } from '@sih/shared';
+import { buildJurisdictionScope } from '../middlewares/auth.js';
 
 export async function listParcels(req: Request, res: Response, next: NextFunction) {
   try {
     const { projectId, status, village, search } = req.query;
 
-    const where: any = {};
+    const { parcelWhere } = buildJurisdictionScope(req);
+    const where: any = { ...parcelWhere };
+
     if (projectId && typeof projectId === 'string') where.projectId = projectId;
     if (status && typeof status === 'string') where.status = status;
     if (village && typeof village === 'string') where.village = village;
     if (search && typeof search === 'string') {
-      where.OR = [
-        { khasraNumber: { contains: search } },
-        { ownerName: { contains: search } },
-        { village: { contains: search } },
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { khasraNumber: { contains: search } },
+            { ownerName: { contains: search } },
+            { village: { contains: search } },
+          ],
+        },
       ];
     }
 
@@ -39,10 +47,21 @@ export async function listParcels(req: Request, res: Response, next: NextFunctio
       orderBy: { khasraNumber: 'asc' },
     });
 
+    // Redact sensitive PII if user is CITIZEN_VIEWER or not logged in
+    const isCitizenOrPublic = !req.user || req.user.role === UserRole.CITIZEN_VIEWER;
+    const sanitizedParcels = isCitizenOrPublic
+      ? parcels.map((p) => ({
+          ...p,
+          ownerAadhaarMasked: 'XXXX-XXXX-XXXX (Protected)',
+          ownerBankAccMasked: 'XXXXXXXX (Protected)',
+          ownerIfsc: 'Protected',
+        }))
+      : parcels;
+
     return res.json({
       success: true,
-      count: parcels.length,
-      data: parcels,
+      count: sanitizedParcels.length,
+      data: sanitizedParcels,
     });
   } catch (error) {
     return next(error);
@@ -69,9 +88,19 @@ export async function getParcelById(req: Request, res: Response, next: NextFunct
       return res.status(404).json({ success: false, message: 'Land parcel not found' });
     }
 
+    const isCitizenOrPublic = !req.user || req.user.role === UserRole.CITIZEN_VIEWER;
+    const sanitized = isCitizenOrPublic
+      ? {
+          ...parcel,
+          ownerAadhaarMasked: 'XXXX-XXXX-XXXX (Protected)',
+          ownerBankAccMasked: 'XXXXXXXX (Protected)',
+          ownerIfsc: 'Protected',
+        }
+      : parcel;
+
     return res.json({
       success: true,
-      data: parcel,
+      data: sanitized,
     });
   } catch (error) {
     return next(error);

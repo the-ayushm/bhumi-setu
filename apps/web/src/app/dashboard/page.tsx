@@ -27,23 +27,33 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+import { useAuth } from '@/lib/auth-context';
+import { UserRole } from '@sih/shared';
 
 const SECTOR_COLORS = ['#0B2545', '#137547', '#FF6F00', '#7C3AED', '#2563EB', '#D97706'];
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const currentRole = user?.role as UserRole;
+
+  // AuthGuard ensures user is always non-null here. Safety check:
+  if (!user) return null;
+
   const { data: summaryData, isLoading: isSummaryLoading } = useQuery({
-    queryKey: ['national-summary'],
+    queryKey: ['national-summary', user?.role, user?.district, user?.state],
     queryFn: () => fetchApi('/analytics/national-summary'),
   });
 
   const { data: stateData } = useQuery({
     queryKey: ['state-rankings'],
     queryFn: () => fetchApi('/analytics/state-rankings'),
+    enabled: currentRole === UserRole.NATIONAL_ADMIN || currentRole === UserRole.STATE_NODAL_OFFICER,
   });
 
   const { data: riskData } = useQuery({
     queryKey: ['risk-indicators'],
     queryFn: () => fetchApi('/analytics/risk-indicators'),
+    enabled: currentRole !== UserRole.CITIZEN_VIEWER && currentRole !== UserRole.FIELD_SURVEYOR,
   });
 
   const kpis = summaryData?.data?.kpis || {
@@ -52,6 +62,7 @@ export default function DashboardPage() {
     totalCompensationBudgetCr: 7190.0,
     totalDisbursedCr: 21.8,
     highRiskProjectsCount: 1,
+    totalParcels: 6,
   };
 
   const sectorChartData =
@@ -69,33 +80,91 @@ export default function DashboardPage() {
   const stateRankings = stateData?.data || [];
   const riskList = riskData?.data || [];
 
+  // Role-specific Header Titles
+  const getDashboardTitle = () => {
+    switch (currentRole) {
+      case UserRole.STATE_NODAL_OFFICER:
+        return `State Nodal Directorate — ${user?.state || 'Maharashtra'} Command Portal`;
+      case UserRole.DISTRICT_COLLECTOR:
+        return `District Collectorate (${user?.district || 'Pune'}) — Land Acquisition Desk`;
+      case UserRole.LAND_ACQUISITION_OFFICER:
+        return `CALA / Sub-Divisional Officer (SDO) Operations Console`;
+      case UserRole.REQUISITIONING_AGENCY:
+        return `Requisitioning Agency (NHAI) Infrastructure Corridors Desk`;
+      case UserRole.FIELD_SURVEYOR:
+        return `Field Cadastre & Joint Measurement Inspection Dashboard`;
+      case UserRole.CITIZEN_VIEWER:
+        return `National Land Acquisition Citizen Public Information Portal`;
+      default:
+        return `National Land Acquisition Executive Command Center`;
+    }
+  };
+
+  const getDashboardSubtitle = () => {
+    switch (currentRole) {
+      case UserRole.STATE_NODAL_OFFICER:
+        return `Statutory oversight of infrastructure acquisitions within ${user?.state || 'the State'}`;
+      case UserRole.DISTRICT_COLLECTOR:
+        return `Sec 11-19 gazette notifications, awards, and DBT clearances for ${user?.district || 'District'} jurisdiction`;
+      case UserRole.LAND_ACQUISITION_OFFICER:
+        return `Cadastral ground verification, award determination, and beneficiary accounts settlement`;
+      case UserRole.REQUISITIONING_AGENCY:
+        return `Proposal monitoring, right-of-way (ROW) possession tracking, and agency fund placement`;
+      case UserRole.FIELD_SURVEYOR:
+        return `Field survey assignments, GPS geo-tagging, and tree/structure asset counts`;
+      case UserRole.CITIZEN_VIEWER:
+        return `Public transparency portal for verified awards, compensation criteria, and project schedules under RFCTLARR 2013`;
+      default:
+        return `Real-Time statutory monitoring across Central & State Infrastructure Requisitions`;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="bg-gov-navy text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded tracking-wider">
+              {currentRole}
+            </span>
+            {user?.state && (
+              <span className="bg-slate-100 text-slate-700 text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-200">
+                {user.state}{user.district ? ` • ${user.district}` : ''}
+              </span>
+            )}
+          </div>
           <h2 className="text-xl sm:text-2xl font-bold text-gov-navy flex items-center gap-2">
             <Building2 className="w-6 h-6 text-gov-navy" />
-            National Land Acquisition Executive Command Center
+            {getDashboardTitle()}
           </h2>
-          <p className="text-xs text-slate-500">
-            Real-Time statutory monitoring across Central & State Infrastructure Requisitions
-          </p>
+          <p className="text-xs text-slate-500">{getDashboardSubtitle()}</p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/mis-reports"
-            className="bg-gov-navy hover:bg-gov-navy-light text-white text-xs font-semibold px-3 py-2 rounded flex items-center gap-1.5 transition-colors"
-          >
-            <span>Export Statutory MIS</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </Link>
+          {currentRole !== UserRole.CITIZEN_VIEWER && currentRole !== UserRole.FIELD_SURVEYOR && (
+            <Link
+              href="/mis-reports"
+              className="bg-gov-navy hover:bg-gov-navy-light text-white text-xs font-semibold px-3 py-2 rounded flex items-center gap-1.5 transition-colors"
+            >
+              <span>Export Statutory MIS</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
+          {currentRole === UserRole.CITIZEN_VIEWER && (
+            <Link
+              href="/parcels"
+              className="bg-gov-saffron hover:bg-gov-saffron-dark text-white text-xs font-semibold px-3 py-2 rounded flex items-center gap-1.5 transition-colors"
+            >
+              <span>Explore Cadastral GIS</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
         </div>
       </div>
 
-      {/* Critical Early Warning Alert (if any project is near statutory lapse) */}
-      {riskList.some((r: any) => r.hasSec11LapseWarning) && (
+      {/* Critical Early Warning Alert (for authorized roles only) */}
+      {riskList.some((r: any) => r.hasSec11LapseWarning) && currentRole !== UserRole.CITIZEN_VIEWER && (
         <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded-r-lg shadow-sm">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -104,9 +173,7 @@ export default function DashboardPage() {
                 Statutory Expiry Alert — Section 19 Clock Running Out:
               </span>
               <p className="text-red-800 mt-1">
-                {
-                  riskList.find((r: any) => r.hasSec11LapseWarning)?.summary
-                }
+                {riskList.find((r: any) => r.hasSec11LapseWarning)?.summary}
               </p>
               <div className="mt-2">
                 <Link
@@ -121,22 +188,30 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Top Executive Stats */}
+      {/* Role-Adaptive Executive Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="text-slate-500 text-xs font-medium">Requisitioned Extent</div>
-          <div className="text-xl sm:text-2xl font-bold text-gov-navy mt-1">
-            {kpis.totalAreaHectares} Ha
+          <div className="text-slate-500 text-xs font-medium">
+            {currentRole === UserRole.CITIZEN_VIEWER ? 'Monitored Corridors' : 'Requisitioned Extent'}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">Across 4 Mega-Corridors</div>
+          <div className="text-xl sm:text-2xl font-bold text-gov-navy mt-1">
+            {currentRole === UserRole.CITIZEN_VIEWER ? `${kpis.totalProjects} Projects` : `${kpis.totalAreaHectares} Ha`}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-1">
+            {currentRole === UserRole.DISTRICT_COLLECTOR ? 'Within District Boundary' : 'Active Requisition Footprint'}
+          </div>
         </div>
 
         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="text-slate-500 text-xs font-medium">Compensation Allocation</div>
-          <div className="text-xl sm:text-2xl font-bold text-gov-green mt-1">
-            ₹{kpis.totalCompensationBudgetCr} Cr
+          <div className="text-slate-500 text-xs font-medium">
+            {currentRole === UserRole.FIELD_SURVEYOR ? 'Cadastral Parcels' : 'Compensation Allocation'}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">Section 26-30 Pool</div>
+          <div className="text-xl sm:text-2xl font-bold text-gov-green mt-1">
+            {currentRole === UserRole.FIELD_SURVEYOR ? `${kpis.totalParcels} Khasras` : `₹${kpis.totalCompensationBudgetCr} Cr`}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-1">
+            {currentRole === UserRole.FIELD_SURVEYOR ? 'Assigned Field Survey Area' : 'Section 26-30 Pool'}
+          </div>
         </div>
 
         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
@@ -148,11 +223,15 @@ export default function DashboardPage() {
         </div>
 
         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="text-slate-500 text-xs font-medium">High Risk Corridors</div>
-          <div className="text-xl sm:text-2xl font-bold text-red-600 mt-1">
-            {kpis.highRiskProjectsCount}
+          <div className="text-slate-500 text-xs font-medium">
+            {currentRole === UserRole.CITIZEN_VIEWER ? 'Displaced Families R&R' : 'High Risk Corridors'}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">Delayed Gazette Declarations</div>
+          <div className="text-xl sm:text-2xl font-bold text-red-600 mt-1">
+            {currentRole === UserRole.CITIZEN_VIEWER ? kpis.totalDisplacedFamilies || 4 : kpis.highRiskProjectsCount}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-1">
+            {currentRole === UserRole.CITIZEN_VIEWER ? 'Entitled Under Schedule II' : 'Delayed Gazette Declarations'}
+          </div>
         </div>
       </div>
 

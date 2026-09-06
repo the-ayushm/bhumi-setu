@@ -15,6 +15,8 @@ import {
   FileSpreadsheet,
   Smartphone,
 } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import { isRouteAllowed } from '@sih/shared';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -31,11 +33,18 @@ const NAV_ITEMS = [
 
 export function GovNav() {
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  // AuthGuard ensures user is always non-null on protected pages
+  if (!user) return null;
+
+  const currentRole = user.role;
+  const visibleNavItems = NAV_ITEMS.filter((item) => isRouteAllowed(currentRole, item.href));
 
   return (
     <nav className="bg-gov-navy border-b border-gov-navy-light text-white text-xs font-medium px-4 overflow-x-auto shadow-sm">
       <div className="max-w-7xl mx-auto flex items-center space-x-1 py-1 min-w-max">
-        {NAV_ITEMS.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
 

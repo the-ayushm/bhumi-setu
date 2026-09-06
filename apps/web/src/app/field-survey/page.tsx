@@ -313,17 +313,21 @@ function FieldSurveyContent() {
   );
 }
 
+import { RoleGuard } from '@/components/auth/RoleGuard';
+
 export default function FieldSurveyPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="text-center py-16 text-xs text-slate-500">
-          Loading Mobile Field Inspection Desk...
-        </div>
-      }
-    >
-      <FieldSurveyContent />
-    </Suspense>
+    <RoleGuard routePath="/field-survey">
+      <Suspense
+        fallback={
+          <div className="text-center py-16 text-xs text-slate-500">
+            Loading Mobile Field Inspection Desk...
+          </div>
+        }
+      >
+        <FieldSurveyContent />
+      </Suspense>
+    </RoleGuard>
   );
 }
 

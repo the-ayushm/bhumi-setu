@@ -7,7 +7,7 @@ import { UserRole } from '@sih/shared';
 import { ShieldCheck, UserCheck, RefreshCw, LogOut, Globe, AlertTriangle } from 'lucide-react';
 
 export function GovHeader() {
-  const { user, quickSwitchRole, logout } = useAuth();
+  const { user, quickSwitchRole, logout, isSwitching } = useAuth();
 
   return (
     <header className="w-full border-b border-gov-navy-light/20 bg-white sticky top-0 z-50">
@@ -74,15 +74,22 @@ export function GovHeader() {
               <UserCheck className="w-3.5 h-3.5 text-gov-green" />
               {user?.name || 'Authorized Official'}
             </div>
-            <div className="text-[11px] text-slate-500">{user?.designation || 'MoRD Portal Session'}</div>
+            <div className="text-[11px] text-slate-500 font-medium">
+              {user?.designation || 'MoRD Portal Session'}
+              {user?.state && <span className="ml-1 text-gov-saffron-dark font-semibold">({user.state}{user.district ? ` • ${user.district}` : ''})</span>}
+            </div>
           </div>
 
           <div className="flex items-center space-x-1.5">
             {/* Quick Role Switcher Dropdown */}
+            {isSwitching && (
+              <RefreshCw className="w-3.5 h-3.5 text-gov-saffron animate-spin" />
+            )}
             <select
               aria-label="Select demonstration persona role"
-              className="text-xs bg-white border border-slate-300 rounded px-2 py-1 font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-gov-navy"
+              className="text-xs bg-white border border-slate-300 rounded px-2 py-1 font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-gov-navy disabled:opacity-50"
               value={user?.role || UserRole.NATIONAL_ADMIN}
+              disabled={isSwitching}
               onChange={(e) => quickSwitchRole(e.target.value as UserRole)}
             >
               {Object.entries(PRESET_DEMO_ACCOUNTS).map(([roleKey, acc]) => (
