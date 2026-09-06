@@ -12,6 +12,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
+    "db:push:pg": "prisma db push --schema=prisma/schema.postgresql.prisma",
+    "db:studio": "prisma studio",
+    "db:studio:pg": "prisma studio --schema=prisma/schema.postgresql.prisma",
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {

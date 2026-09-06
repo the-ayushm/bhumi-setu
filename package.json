@@ -17,7 +17,11 @@
     "vercel-build": "npm run build --workspace=@sih/shared && npm run build --workspace=@sih/web",
     "typecheck": "npm run typecheck --workspaces",
     "lint": "npm run lint --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "db:push:pg": "npm run db:push:pg --workspace=@sih/api",
+    "db:studio": "npm run db:studio --workspace=@sih/api",
+    "db:studio:pg": "npm run db:studio:pg --workspace=@sih/api",
+    "seed": "npm run seed --workspace=@sih/api"
   },
   "keywords": [
     "sih-2024",
